@@ -44,7 +44,9 @@
   </div>
 
   <main class="max-w-2xl mx-auto px-4 pt-4">
-    <div id="listaDefectos" class="space-y-2"></div>
+    <div id="listaDefectos" class="space-y-2">
+      <p class="text-sm text-gray-400 text-center py-8">Cargando...</p>
+    </div>
   </main>
 
   <!-- FAB -->
@@ -78,9 +80,11 @@
     </a>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
+    let todosDefectos = [];
     let filtroActivo = 'todos';
 
     function setFiltro(f) {
@@ -96,7 +100,7 @@
 
     function render() {
       const q = document.getElementById('buscar').value.toLowerCase();
-      let defectos = DB.getDefectos();
+      let defectos = todosDefectos;
       if (filtroActivo !== 'todos') defectos = defectos.filter(d => d.estado === filtroActivo);
       if (q) defectos = defectos.filter(d =>
         (d.descripcion || '').toLowerCase().includes(q) ||
@@ -132,8 +136,12 @@
         </a>`).join('');
     }
 
-    document.getElementById('buscar').addEventListener('input', render);
+    async function cargar() {
+      todosDefectos = await DB.getDefectos();
+      render();
+    }
 
+    document.getElementById('buscar').addEventListener('input', render);
     document.querySelectorAll('.filtro-btn').forEach(btn => {
       btn.addEventListener('click', () => setFiltro(btn.dataset.filtro));
     });
@@ -143,10 +151,9 @@
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const RVC = [193, 39, 45];
       const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const defectos = DB.getDefectos();
+      const defectos = todosDefectos;
       const ordenados = [...defectos].reverse();
 
-      // ── Portada ────────────────────────────────────────────────────
       doc.setFillColor(...RVC);
       doc.rect(0, 0, 210, 32, 'F');
       doc.setTextColor(255, 255, 255);
@@ -159,7 +166,6 @@
       doc.setFontSize(8); doc.setFont(undefined, 'normal');
       doc.text(`Generado: ${fecha}`, 14, 25);
 
-      // ── Resumen ────────────────────────────────────────────────────
       const abiertos  = defectos.filter(d => d.estado === 'abierto').length;
       const enProceso = defectos.filter(d => d.estado === 'en_proceso').length;
       const cerrados  = defectos.filter(d => d.estado === 'cerrado').length;
@@ -176,7 +182,6 @@
         margin: { left: 14, right: 14 }
       });
 
-      // ── Tabla listado ──────────────────────────────────────────────
       const startY = doc.lastAutoTable.finalY + 8;
       doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.setTextColor(30,30,30);
       doc.text('Listado de defectos', 14, startY);
@@ -214,7 +219,6 @@
         margin: { left: 14, right: 14 }
       });
 
-      // ── Registro fotográfico ───────────────────────────────────────
       const conFoto = ordenados.filter(d => d.foto || (d.comentarios || []).some(c => c.foto));
 
       if (conFoto.length > 0) {
@@ -247,7 +251,6 @@
 
           checkPage(22);
 
-          // Cabecera del defecto
           doc.setFillColor(243, 244, 246);
           doc.rect(14, y, 182, 12, 'F');
           doc.setFont(undefined, 'bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
@@ -255,7 +258,6 @@
           doc.setFont(undefined, 'normal'); doc.setFontSize(7); doc.setTextColor(100,100,100);
           doc.text(`${d.gremio} · ${d.zona} · ${fmtDate(d.fecha)}`, 16, y + 9.5);
 
-          // Badge de estado
           const ec = estadoCol[d.estado] || [150,150,150];
           const eLabel = ESTADOS[d.estado]?.label || d.estado;
           const pw = eLabel.length * 1.8 + 5;
@@ -266,7 +268,6 @@
 
           y += 14;
 
-          // Foto del defecto
           if (d.foto) {
             checkPage(58);
             const ok = addImgSafe(d.foto, 14, y, 82, 52);
@@ -283,7 +284,6 @@
             }
           }
 
-          // Fotos de cierre (comentarios del especialista)
           for (const c of cierres) {
             checkPage(62);
             doc.setFillColor(240, 253, 244);
@@ -302,7 +302,6 @@
         }
       }
 
-      // ── Pie de página en todas las hojas ──────────────────────────
       const pages = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pages; i++) {
         doc.setPage(i);
@@ -317,6 +316,7 @@
     });
 
     setFiltro('todos');
+    cargar();
   </script>
 </body>
 </html>

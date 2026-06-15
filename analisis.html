@@ -87,7 +87,7 @@
     <div class="bg-white rounded-xl shadow-sm p-4">
       <h2 class="font-semibold text-gray-700 mb-4">Por especialidad</h2>
       <div id="tablaGremio" class="space-y-4">
-        <p class="text-sm text-gray-400">Sin datos</p>
+        <p class="text-sm text-gray-400">Cargando...</p>
       </div>
     </div>
 
@@ -95,7 +95,7 @@
     <div class="bg-white rounded-xl shadow-sm p-4">
       <h2 class="font-semibold text-gray-700 mb-3">Zonas con más incidencias</h2>
       <div id="tablaZona" class="space-y-3">
-        <p class="text-sm text-gray-400">Sin datos</p>
+        <p class="text-sm text-gray-400">Cargando...</p>
       </div>
     </div>
 
@@ -103,7 +103,7 @@
     <div class="bg-white rounded-xl shadow-sm p-4">
       <h2 class="font-semibold text-gray-700 mb-3">Pendientes más antiguos</h2>
       <div id="listaAntiguos">
-        <p class="text-sm text-gray-400">Sin datos</p>
+        <p class="text-sm text-gray-400">Cargando...</p>
       </div>
     </div>
 
@@ -135,147 +135,146 @@
     </a>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
-    const todos  = DB.getDefectos();
-    const ahora  = new Date();
+    async function init() {
+      const todos  = await DB.getDefectos();
+      const ahora  = new Date();
 
-    // ── Conteos ──────────────────────────────────────────────────────────
-    const abiertos  = todos.filter(d => d.estado === 'abierto').length;
-    const enProceso = todos.filter(d => d.estado === 'en_proceso').length;
-    const cerrados  = todos.filter(d => d.estado === 'cerrado').length;
-    const total     = todos.length;
+      const abiertos  = todos.filter(d => d.estado === 'abierto').length;
+      const enProceso = todos.filter(d => d.estado === 'en_proceso').length;
+      const cerrados  = todos.filter(d => d.estado === 'cerrado').length;
+      const total     = todos.length;
 
-    // ── KPIs ─────────────────────────────────────────────────────────────
-    document.getElementById('kpiTotal').textContent    = total;
-    document.getElementById('kpiTasa').textContent     = total ? Math.round((cerrados / total) * 100) + '%' : '0%';
-    document.getElementById('numAbiertos').textContent  = abiertos;
-    document.getElementById('numEnProceso').textContent = enProceso;
-    document.getElementById('numCerrados').textContent  = cerrados;
+      document.getElementById('kpiTotal').textContent    = total;
+      document.getElementById('kpiTasa').textContent     = total ? Math.round((cerrados / total) * 100) + '%' : '0%';
+      document.getElementById('numAbiertos').textContent  = abiertos;
+      document.getElementById('numEnProceso').textContent = enProceso;
+      document.getElementById('numCerrados').textContent  = cerrados;
 
-    const listaCerrados = todos.filter(d => d.estado === 'cerrado' && d.fechaActualizacion && d.fecha);
-    if (listaCerrados.length > 0) {
-      const avg = listaCerrados.reduce((s, d) =>
-        s + (new Date(d.fechaActualizacion) - new Date(d.fecha)) / 86400000, 0) / listaCerrados.length;
-      document.getElementById('kpiTiempo').textContent = Math.round(avg);
-    } else {
-      document.getElementById('kpiTiempo').textContent = '—';
-    }
-
-    const criticos = todos.filter(d =>
-      d.estado !== 'cerrado' && (ahora - new Date(d.fecha)) / 86400000 > 7).length;
-    document.getElementById('kpiCriticos').textContent = criticos;
-
-    // ── Gráfico de estado ─────────────────────────────────────────────────
-    new Chart(document.getElementById('chartEstado'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Abiertos', 'En proceso', 'Cerrados'],
-        datasets: [{
-          data: [abiertos || 0.001, enProceso || 0.001, cerrados || 0.001],
-          backgroundColor: ['#fca5a5', '#fde68a', '#86efac'],
-          borderColor:     ['#ef4444', '#f59e0b', '#22c55e'],
-          borderWidth: 2
-        }]
-      },
-      options: {
-        cutout: '68%',
-        plugins: { legend: { display: false }, tooltip: { enabled: total > 0 } },
-        animation: { duration: 600 }
+      const listaCerrados = todos.filter(d => d.estado === 'cerrado' && d.fechaActualizacion && d.fecha);
+      if (listaCerrados.length > 0) {
+        const avg = listaCerrados.reduce((s, d) =>
+          s + (new Date(d.fechaActualizacion) - new Date(d.fecha)) / 86400000, 0) / listaCerrados.length;
+        document.getElementById('kpiTiempo').textContent = Math.round(avg);
+      } else {
+        document.getElementById('kpiTiempo').textContent = '—';
       }
-    });
 
-    // ── Por especialidad ─────────────────────────────────────────────────
-    const porGremio = {};
-    todos.forEach(d => {
-      if (!d.gremio) return;
-      if (!porGremio[d.gremio]) porGremio[d.gremio] = { total:0, abiertos:0, enProceso:0, cerrados:0 };
-      porGremio[d.gremio].total++;
-      if (d.estado === 'abierto')    porGremio[d.gremio].abiertos++;
-      if (d.estado === 'en_proceso') porGremio[d.gremio].enProceso++;
-      if (d.estado === 'cerrado')    porGremio[d.gremio].cerrados++;
-    });
+      const criticos = todos.filter(d =>
+        d.estado !== 'cerrado' && (ahora - new Date(d.fecha)) / 86400000 > 7).length;
+      document.getElementById('kpiCriticos').textContent = criticos;
 
-    const gremioEntries = Object.entries(porGremio)
-      .sort((a, b) => (b[1].abiertos + b[1].enProceso) - (a[1].abiertos + a[1].enProceso));
+      new Chart(document.getElementById('chartEstado'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Abiertos', 'En proceso', 'Cerrados'],
+          datasets: [{
+            data: [abiertos || 0.001, enProceso || 0.001, cerrados || 0.001],
+            backgroundColor: ['#fca5a5', '#fde68a', '#86efac'],
+            borderColor:     ['#ef4444', '#f59e0b', '#22c55e'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          cutout: '68%',
+          plugins: { legend: { display: false }, tooltip: { enabled: total > 0 } },
+          animation: { duration: 600 }
+        }
+      });
 
-    const gremioEl = document.getElementById('tablaGremio');
-    if (gremioEntries.length === 0) {
-      gremioEl.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
-    } else {
-      gremioEl.innerHTML = gremioEntries.map(([g, v]) => {
-        const pct = v.total ? Math.round((v.cerrados / v.total) * 100) : 0;
-        return `
+      const porGremio = {};
+      todos.forEach(d => {
+        if (!d.gremio) return;
+        if (!porGremio[d.gremio]) porGremio[d.gremio] = { total:0, abiertos:0, enProceso:0, cerrados:0 };
+        porGremio[d.gremio].total++;
+        if (d.estado === 'abierto')    porGremio[d.gremio].abiertos++;
+        if (d.estado === 'en_proceso') porGremio[d.gremio].enProceso++;
+        if (d.estado === 'cerrado')    porGremio[d.gremio].cerrados++;
+      });
+
+      const gremioEntries = Object.entries(porGremio)
+        .sort((a, b) => (b[1].abiertos + b[1].enProceso) - (a[1].abiertos + a[1].enProceso));
+
+      const gremioEl = document.getElementById('tablaGremio');
+      if (gremioEntries.length === 0) {
+        gremioEl.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
+      } else {
+        gremioEl.innerHTML = gremioEntries.map(([g, v]) => {
+          const pct = v.total ? Math.round((v.cerrados / v.total) * 100) : 0;
+          return `
+            <div>
+              <div class="flex justify-between items-baseline mb-1">
+                <span class="text-sm font-medium text-gray-700">${g}</span>
+                <span class="text-xs text-gray-400">${pct}% cerrado</span>
+              </div>
+              <div class="w-full bg-gray-100 rounded-full h-2 mb-1.5">
+                <div class="h-2 rounded-full transition-all" style="width:${pct}%;background:#22c55e"></div>
+              </div>
+              <div class="flex gap-4 text-xs">
+                <span class="text-red-500">${v.abiertos} abiertos</span>
+                <span class="text-yellow-500">${v.enProceso} en proceso</span>
+                <span class="text-green-500">${v.cerrados} cerrados</span>
+              </div>
+            </div>`;
+        }).join('');
+      }
+
+      const porZona = {};
+      todos.forEach(d => {
+        if (!d.zona) return;
+        if (!porZona[d.zona]) porZona[d.zona] = { total: 0, pendientes: 0 };
+        porZona[d.zona].total++;
+        if (d.estado !== 'cerrado') porZona[d.zona].pendientes++;
+      });
+      const zonaEntries = Object.entries(porZona)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 7);
+      const maxTotal = zonaEntries.length ? zonaEntries[0][1].total : 1;
+
+      const zonaEl = document.getElementById('tablaZona');
+      if (zonaEntries.length === 0) {
+        zonaEl.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
+      } else {
+        zonaEl.innerHTML = zonaEntries.map(([z, v]) => `
           <div>
-            <div class="flex justify-between items-baseline mb-1">
-              <span class="text-sm font-medium text-gray-700">${g}</span>
-              <span class="text-xs text-gray-400">${pct}% cerrado</span>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-gray-600 truncate mr-2">${z}</span>
+              <span class="text-xs text-gray-400 flex-shrink-0">${v.pendientes} pend. / ${v.total} total</span>
             </div>
-            <div class="w-full bg-gray-100 rounded-full h-2 mb-1.5">
-              <div class="h-2 rounded-full transition-all" style="width:${pct}%;background:#22c55e"></div>
+            <div class="w-full bg-gray-100 rounded-full h-1.5">
+              <div class="h-1.5 rounded-full" style="width:${Math.round((v.total/maxTotal)*100)}%;background:#C1272D"></div>
             </div>
-            <div class="flex gap-4 text-xs">
-              <span class="text-red-500">${v.abiertos} abiertos</span>
-              <span class="text-yellow-500">${v.enProceso} en proceso</span>
-              <span class="text-green-500">${v.cerrados} cerrados</span>
+          </div>`).join('');
+      }
+
+      const pendientesOrdenados = todos
+        .filter(d => d.estado !== 'cerrado')
+        .map(d => ({ ...d, dias: Math.round((ahora - new Date(d.fecha)) / 86400000) }))
+        .sort((a, b) => b.dias - a.dias)
+        .slice(0, 5);
+
+      const antiguosEl = document.getElementById('listaAntiguos');
+      if (pendientesOrdenados.length === 0) {
+        antiguosEl.innerHTML = '<p class="text-sm text-gray-400">No hay pendientes</p>';
+      } else {
+        antiguosEl.innerHTML = pendientesOrdenados.map(d => `
+          <a href="detalle.html?id=${d.id}" class="flex items-center justify-between py-2.5 border-b last:border-0 gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-700 truncate">${d.descripcion}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${d.gremio} · ${d.zona}</p>
             </div>
-          </div>`;
-      }).join('');
+            <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
+              ${badge(d.estado)}
+              <span class="text-xs font-semibold ${d.dias > 7 ? 'text-red-500' : 'text-gray-400'}">${d.dias}d</span>
+            </div>
+          </a>`).join('');
+      }
     }
 
-    // ── Por zona ──────────────────────────────────────────────────────────
-    const porZona = {};
-    todos.forEach(d => {
-      if (!d.zona) return;
-      if (!porZona[d.zona]) porZona[d.zona] = { total: 0, pendientes: 0 };
-      porZona[d.zona].total++;
-      if (d.estado !== 'cerrado') porZona[d.zona].pendientes++;
-    });
-    const zonaEntries = Object.entries(porZona)
-      .sort((a, b) => b[1].total - a[1].total)
-      .slice(0, 7);
-    const maxTotal = zonaEntries.length ? zonaEntries[0][1].total : 1;
-
-    const zonaEl = document.getElementById('tablaZona');
-    if (zonaEntries.length === 0) {
-      zonaEl.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
-    } else {
-      zonaEl.innerHTML = zonaEntries.map(([z, v]) => `
-        <div>
-          <div class="flex justify-between text-sm mb-1">
-            <span class="text-gray-600 truncate mr-2">${z}</span>
-            <span class="text-xs text-gray-400 flex-shrink-0">${v.pendientes} pend. / ${v.total} total</span>
-          </div>
-          <div class="w-full bg-gray-100 rounded-full h-1.5">
-            <div class="h-1.5 rounded-full" style="width:${Math.round((v.total/maxTotal)*100)}%;background:#C1272D"></div>
-          </div>
-        </div>`).join('');
-    }
-
-    // ── Pendientes más antiguos ────────────────────────────────────────────
-    const pendientesOrdenados = todos
-      .filter(d => d.estado !== 'cerrado')
-      .map(d => ({ ...d, dias: Math.round((ahora - new Date(d.fecha)) / 86400000) }))
-      .sort((a, b) => b.dias - a.dias)
-      .slice(0, 5);
-
-    const antiguosEl = document.getElementById('listaAntiguos');
-    if (pendientesOrdenados.length === 0) {
-      antiguosEl.innerHTML = '<p class="text-sm text-gray-400">No hay pendientes</p>';
-    } else {
-      antiguosEl.innerHTML = pendientesOrdenados.map(d => `
-        <a href="detalle.html?id=${d.id}" class="flex items-center justify-between py-2.5 border-b last:border-0 gap-3">
-          <div class="min-w-0">
-            <p class="text-sm font-medium text-gray-700 truncate">${d.descripcion}</p>
-            <p class="text-xs text-gray-400 mt-0.5">${d.gremio} · ${d.zona}</p>
-          </div>
-          <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
-            ${badge(d.estado)}
-            <span class="text-xs font-semibold ${d.dias > 7 ? 'text-red-500' : 'text-gray-400'}">${d.dias}d</span>
-          </div>
-        </a>`).join('');
-    }
+    init();
   </script>
 </body>
 </html>

@@ -111,45 +111,14 @@
     </a>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
     var estadoSeleccionado = 'abierto';
     var fotoBase64 = null;
     var editId = null;
-
-    // Poblar gremios
-    var selGremio = document.getElementById('gremio');
-    GREMIOS.forEach(function(g) {
-      var opt = document.createElement('option');
-      opt.value = g.nombre; opt.textContent = g.nombre;
-      selGremio.appendChild(opt);
-    });
-
-    // Modo edición
-    var paramId = new URLSearchParams(window.location.search).get('id');
-    if (paramId) {
-      editId = parseInt(paramId);
-      var d = DB.getDefectos().find(function(x) { return x.id === editId; });
-      if (d) {
-        document.getElementById('pageTitle').textContent    = 'Editar defecto';
-        document.getElementById('descripcion').value        = d.descripcion || '';
-        document.getElementById('gremio').value             = d.gremio || '';
-        document.getElementById('zona').value               = d.zona || '';
-        document.getElementById('notas').value              = d.notas || '';
-        setEstado(d.estado || 'abierto');
-        if (d.foto) {
-          fotoBase64 = d.foto;
-          document.getElementById('fotoPlaceholder').classList.add('hidden');
-          var img = document.getElementById('fotoPreview');
-          img.src = d.foto;
-          img.classList.remove('hidden');
-        }
-        document.getElementById('btnEliminar').classList.remove('hidden');
-      }
-    } else {
-      setEstado('abierto');
-    }
+    var defectoOriginal = null;
 
     function setEstado(e) {
       estadoSeleccionado = e;
@@ -181,7 +150,7 @@
       reader.readAsDataURL(input.files[0]);
     }
 
-    function guardar() {
+    async function guardar() {
       var descripcion = document.getElementById('descripcion').value.trim();
       var gremio      = document.getElementById('gremio').value;
       var zona        = document.getElementById('zona').value.trim();
@@ -191,33 +160,73 @@
       if (!gremio)      { alert('Selecciona el gremio'); return; }
       if (!zona)        { alert('Escribe la zona o ubicación'); return; }
 
-      var existente = editId ? DB.getDefectos().find(function(x) { return x.id === editId; }) : null;
-
       var defecto = {
-        id:                 editId || DB.nextId('defecto'),
-        descripcion:        descripcion,
-        gremio:             gremio,
-        zona:               zona,
-        estado:             estadoSeleccionado,
-        notas:              notas,
-        foto:               fotoBase64,
-        fecha:              existente ? existente.fecha : new Date().toISOString(),
-        fechaActualizacion: new Date().toISOString()
+        id:          editId || null,
+        descripcion: descripcion,
+        gremio:      gremio,
+        zona:        zona,
+        estado:      estadoSeleccionado,
+        notas:       notas,
+        foto:        fotoBase64,
+        fecha:       defectoOriginal ? defectoOriginal.fecha : new Date().toISOString()
       };
 
       try {
-        DB.saveDefecto(defecto);
+        await DB.saveDefecto(defecto);
         window.location.href = 'defectos.html';
       } catch(e) {
         alert('Error al guardar: ' + e.message);
       }
     }
 
-    function eliminar() {
+    async function eliminar() {
       if (!confirm('¿Eliminar este defecto?')) return;
-      DB.deleteDefecto(editId);
-      window.location.href = 'defectos.html';
+      try {
+        await DB.deleteDefecto(editId);
+        window.location.href = 'defectos.html';
+      } catch(e) {
+        alert('Error al eliminar: ' + e.message);
+      }
     }
+
+    async function init() {
+      const gremios = await DB.getGremios();
+      var selGremio = document.getElementById('gremio');
+      gremios.forEach(function(g) {
+        var opt = document.createElement('option');
+        opt.value = g.nombre; opt.textContent = g.nombre;
+        selGremio.appendChild(opt);
+      });
+
+      var paramId = new URLSearchParams(window.location.search).get('id');
+      if (paramId) {
+        editId = parseInt(paramId);
+        try {
+          defectoOriginal = await DB.getDefecto(editId);
+          const d = defectoOriginal;
+          document.getElementById('pageTitle').textContent    = 'Editar defecto';
+          document.getElementById('descripcion').value        = d.descripcion || '';
+          document.getElementById('gremio').value             = d.gremio || '';
+          document.getElementById('zona').value               = d.zona || '';
+          document.getElementById('notas').value              = d.notas || '';
+          setEstado(d.estado || 'abierto');
+          if (d.foto) {
+            fotoBase64 = d.foto;
+            document.getElementById('fotoPlaceholder').classList.add('hidden');
+            var img = document.getElementById('fotoPreview');
+            img.src = d.foto;
+            img.classList.remove('hidden');
+          }
+          document.getElementById('btnEliminar').classList.remove('hidden');
+        } catch(e) {
+          alert('Error al cargar el defecto');
+        }
+      } else {
+        setEstado('abierto');
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>

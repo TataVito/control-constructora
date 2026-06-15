@@ -27,8 +27,11 @@
     </div>
   </header>
 
-  <main class="max-w-2xl mx-auto px-4 pt-5" id="contenido"></main>
+  <main class="max-w-2xl mx-auto px-4 pt-5" id="contenido">
+    <p class="text-sm text-gray-400">Cargando...</p>
+  </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
@@ -47,119 +50,122 @@
       });
     }
 
-    if (!gParam) {
-      // ── Selector de especialidad ──────────────────────────────────────
-      const defectos = DB.getDefectos();
-      const origen = window.location.origin;
-      const cards = GREMIOS.map((g, idx) => {
-        const pendientes = defectos.filter(d => d.gremio === g.nombre && d.estado !== 'cerrado').length;
-        const url = `${origen}/gremio.html?g=${encodeURIComponent(g.nombre)}`;
-        const btnId = `btnCopy${idx}`;
-        return `
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-            <a href="gremio.html?g=${encodeURIComponent(g.nombre)}" class="block">
-              ${g.foto
-                ? `<img src="${g.foto}" class="w-full h-24 object-cover">`
-                : `<div class="w-full h-16 flex items-center justify-center" style="background:#fef2f2">
-                    <span class="text-2xl font-bold" style="color:#C1272D">${g.nombre.charAt(0)}</span>
-                   </div>`}
-              <div class="p-3 border-l-4 flex flex-col gap-1.5" style="border-color:#C1272D">
-                <span class="text-sm font-semibold text-gray-700">${g.nombre}</span>
-                ${pendientes > 0
-                  ? `<span class="inline-block w-fit text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">${pendientes} pendiente${pendientes !== 1 ? 's' : ''}</span>`
-                  : `<span class="text-xs text-gray-400">Sin pendientes</span>`}
+    async function init() {
+      if (!gParam) {
+        const [gremios, defectos] = await Promise.all([DB.getGremios(), DB.getDefectos()]);
+        const origen = window.location.origin + window.location.pathname.replace('gremio.html', '');
+        const cards = gremios.map((g, idx) => {
+          const pendientes = defectos.filter(d => d.gremio === g.nombre && d.estado !== 'cerrado').length;
+          const url = `${origen}gremio.html?g=${encodeURIComponent(g.nombre)}`;
+          const btnId = `btnCopy${idx}`;
+          return `
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
+              <a href="gremio.html?g=${encodeURIComponent(g.nombre)}" class="block">
+                ${g.foto
+                  ? `<img src="${g.foto}" class="w-full h-24 object-cover">`
+                  : `<div class="w-full h-16 flex items-center justify-center" style="background:#fef2f2">
+                      <span class="text-2xl font-bold" style="color:#C1272D">${g.nombre.charAt(0)}</span>
+                     </div>`}
+                <div class="p-3 border-l-4 flex flex-col gap-1.5" style="border-color:#C1272D">
+                  <span class="text-sm font-semibold text-gray-700">${g.nombre}</span>
+                  ${pendientes > 0
+                    ? `<span class="inline-block w-fit text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">${pendientes} pendiente${pendientes !== 1 ? 's' : ''}</span>`
+                    : `<span class="text-xs text-gray-400">Sin pendientes</span>`}
+                </div>
+              </a>
+              <div class="px-3 pb-3 flex items-center gap-2">
+                <span class="text-xs text-gray-300 truncate flex-1">${url}</span>
+                <button id="${btnId}" onclick="copiarUrl('${url}','${btnId}')"
+                  class="flex items-center gap-1 flex-shrink-0 text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 transition">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  <span>Copiar</span>
+                </button>
               </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('contenido').innerHTML = `
+          <p class="text-sm text-gray-500 mb-4">Selecciona tu especialidad</p>
+          <div class="grid grid-cols-2 gap-3">${cards}</div>`;
+
+      } else {
+        const nombre = decodeURIComponent(gParam);
+
+        document.getElementById('headerInner').innerHTML = `
+          <div class="flex items-center gap-3">
+            <a href="gremio.html" class="text-red-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
             </a>
-            <div class="px-3 pb-3 flex items-center gap-2">
-              <span class="text-xs text-gray-300 truncate flex-1">${url}</span>
-              <button id="${btnId}" onclick="copiarUrl('${url}','${btnId}')"
-                class="flex items-center gap-1 flex-shrink-0 text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 transition">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                <span>Copiar</span>
-              </button>
-            </div>
-          </div>`;
-      }).join('');
+            <img src="rvc.jpg" alt="RVC" class="h-9 w-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0">
+            <h1 class="text-lg font-bold">${nombre}</h1>
+          </div>
+          <a href="index.html" class="flex items-center gap-1.5 text-red-200 text-xs font-medium hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+            Administración
+          </a>`;
 
-      document.getElementById('contenido').innerHTML = `
-        <p class="text-sm text-gray-500 mb-4">Selecciona tu especialidad</p>
-        <div class="grid grid-cols-2 gap-3">${cards}</div>`;
+        let modo = 'pendientes';
+        let todosDefectos = await DB.getDefectos();
 
-    } else {
-      // ── Lista de trabajos del gremio ──────────────────────────────────
-      const nombre = decodeURIComponent(gParam);
+        document.getElementById('contenido').innerHTML = `
+          <div class="flex gap-2 mb-4">
+            <button id="btnP" onclick="cambiarModo('pendientes')" class="text-xs font-medium px-3 py-1.5 rounded-full border transition">Pendientes</button>
+            <button id="btnT" onclick="cambiarModo('todos')"      class="text-xs font-medium px-3 py-1.5 rounded-full border transition">Todos</button>
+          </div>
+          <div id="lista" class="space-y-2"></div>`;
 
-      document.getElementById('headerInner').innerHTML = `
-        <div class="flex items-center gap-3">
-          <a href="gremio.html" class="text-red-200">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-          </a>
-          <img src="rvc.jpg" alt="RVC" class="h-9 w-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0">
-          <h1 class="text-lg font-bold">${nombre}</h1>
-        </div>
-        <a href="index.html" class="flex items-center gap-1.5 text-red-200 text-xs font-medium hover:text-white transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
-          Administración
-        </a>`;
+        function renderLista() {
+          let lista = todosDefectos.filter(d => d.gremio === nombre);
+          if (modo === 'pendientes') lista = lista.filter(d => d.estado !== 'cerrado');
+          lista = [...lista].reverse();
 
-      let modo = 'pendientes';
+          [['btnP','pendientes'],['btnT','todos']].forEach(([id, m]) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.backgroundColor = modo === m ? '#C1272D' : '#fff';
+            el.style.color           = modo === m ? '#fff'    : '#6b7280';
+            el.style.borderColor     = modo === m ? '#C1272D' : '#e5e7eb';
+          });
 
-      document.getElementById('contenido').innerHTML = `
-        <div class="flex gap-2 mb-4">
-          <button id="btnP" onclick="cambiarModo('pendientes')" class="text-xs font-medium px-3 py-1.5 rounded-full border transition">Pendientes</button>
-          <button id="btnT" onclick="cambiarModo('todos')"      class="text-xs font-medium px-3 py-1.5 rounded-full border transition">Todos</button>
-        </div>
-        <div id="lista" class="space-y-2"></div>`;
+          const listEl = document.getElementById('lista');
+          if (!listEl) return;
 
-      function renderLista() {
-        let lista = DB.getDefectos().filter(d => d.gremio === nombre);
-        if (modo === 'pendientes') lista = lista.filter(d => d.estado !== 'cerrado');
-        lista = [...lista].reverse();
+          if (lista.length === 0) {
+            listEl.innerHTML = `<div class="text-center py-12">
+              <p class="text-sm text-gray-400">${modo === 'pendientes' ? 'No hay trabajos pendientes' : 'No hay trabajos registrados'}</p>
+            </div>`;
+            return;
+          }
 
-        [['btnP','pendientes'],['btnT','todos']].forEach(([id, m]) => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          el.style.backgroundColor = modo === m ? '#C1272D' : '#fff';
-          el.style.color           = modo === m ? '#fff'    : '#6b7280';
-          el.style.borderColor     = modo === m ? '#C1272D' : '#e5e7eb';
-        });
-
-        const listEl = document.getElementById('lista');
-        if (!listEl) return;
-
-        if (lista.length === 0) {
-          listEl.innerHTML = `<div class="text-center py-12">
-            <p class="text-sm text-gray-400">${modo === 'pendientes' ? 'No hay trabajos pendientes' : 'No hay trabajos registrados'}</p>
-          </div>`;
-          return;
+          listEl.innerHTML = lista.map(d => `
+            <a href="trabajo.html?id=${d.id}&g=${encodeURIComponent(nombre)}"
+               class="bg-white rounded-xl shadow-sm p-4 flex gap-3 items-start">
+              ${d.foto
+                ? `<img src="${d.foto}" class="w-14 h-14 rounded-lg object-cover flex-shrink-0">`
+                : `<div class="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    </svg>
+                  </div>`}
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                  <p class="text-sm font-medium text-gray-700 leading-snug">${d.descripcion}</p>
+                  ${badge(d.estado)}
+                </div>
+                <p class="text-xs text-gray-400">${d.zona}</p>
+                <p class="text-xs text-gray-300 mt-0.5">${fmtDate(d.fecha)}</p>
+              </div>
+            </a>`).join('');
         }
 
-        listEl.innerHTML = lista.map(d => `
-          <a href="trabajo.html?id=${d.id}&g=${encodeURIComponent(nombre)}"
-             class="bg-white rounded-xl shadow-sm p-4 flex gap-3 items-start">
-            ${d.foto
-              ? `<img src="${d.foto}" class="w-14 h-14 rounded-lg object-cover flex-shrink-0">`
-              : `<div class="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                  </svg>
-                </div>`}
-            <div class="flex-1 min-w-0">
-              <div class="flex items-start justify-between gap-2 mb-1">
-                <p class="text-sm font-medium text-gray-700 leading-snug">${d.descripcion}</p>
-                ${badge(d.estado)}
-              </div>
-              <p class="text-xs text-gray-400">${d.zona}</p>
-              <p class="text-xs text-gray-300 mt-0.5">${fmtDate(d.fecha)}</p>
-            </div>
-          </a>`).join('');
+        window.cambiarModo = function(m) { modo = m; renderLista(); };
+        renderLista();
       }
-
-      window.cambiarModo = function(m) { modo = m; renderLista(); };
-      renderLista();
     }
+
+    init();
   </script>
 </body>
 </html>

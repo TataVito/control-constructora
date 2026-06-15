@@ -1,62 +1,104 @@
-const DB = {
-  get: (key) => JSON.parse(localStorage.getItem(key) || '[]'),
-  set: (key, val) => localStorage.setItem(key, JSON.stringify(val)),
-
-  getDefectos: () => DB.get('defectos'),
-  saveDefecto: (d) => {
-    const list = DB.getDefectos();
-    const idx = list.findIndex(x => x.id === d.id);
-    if (idx >= 0) list[idx] = d; else list.push(d);
-    DB.set('defectos', list);
-  },
-  deleteDefecto: (id) => DB.set('defectos', DB.getDefectos().filter(d => d.id !== id)),
-
-  getGremios: () => {
-    const stored = localStorage.getItem('gremios');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.length > 0 && typeof parsed[0] === 'string') {
-        const migrated = parsed.map(n => ({ nombre: n, foto: null }));
-        localStorage.setItem('gremios', JSON.stringify(migrated));
-        return migrated;
-      }
-      return parsed;
-    }
-    const defaults = ['Albañilería', 'Fontanería', 'Electricidad', 'Carpintería', 'Pintura', 'Yeso / Escayola', 'Solados', 'Fachada', 'Otros']
-      .map(n => ({ nombre: n, foto: null }));
-    localStorage.setItem('gremios', JSON.stringify(defaults));
-    return defaults;
-  },
-  saveGremios: (lista) => localStorage.setItem('gremios', JSON.stringify(lista)),
-
-  addComentario: (id, texto, nuevoEstado, foto) => {
-    const list = DB.getDefectos();
-    const idx = list.findIndex(x => x.id === id);
-    if (idx < 0) return;
-    if (!list[idx].comentarios) list[idx].comentarios = [];
-    list[idx].comentarios.push({ fecha: new Date().toISOString(), texto, estadoNuevo: nuevoEstado, foto: foto || null });
-    list[idx].estado = nuevoEstado;
-    list[idx].fechaActualizacion = new Date().toISOString();
-    DB.set('defectos', list);
-  },
-
-  // Devuelve lista de nombres de obra únicos para autocompletar
-  getObrasNombres: () => {
-    const nombres = DB.getDefectos().map(d => d.obra).filter(Boolean);
-    return [...new Set(nombres)].sort();
-  },
-
-  nextId: (key) => {
-    const n = parseInt(localStorage.getItem(key + '_seq') || '0') + 1;
-    localStorage.setItem(key + '_seq', n);
-    return n;
-  }
-};
-
-const GREMIOS = DB.getGremios();
+const SUPABASE_URL = 'https://czqgqfdxacdhxryfgryp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_73S0bizsPc14VHxp0oAH_w_1FpJ9QvC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ESTADOS = {
   abierto:    { label: 'Abierto',    color: 'bg-red-100 text-red-700' },
   en_proceso: { label: 'En proceso', color: 'bg-yellow-100 text-yellow-700' },
   cerrado:    { label: 'Cerrado',    color: 'bg-green-100 text-green-700' }
+};
+
+const DB = {
+  _map(d) {
+    return {
+      ...d,
+      fechaActualizacion: d.fecha_actualizacion,
+      comentarios: (d.comentarios || [])
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+        .map(c => ({ fecha: c.fecha, texto: c.texto, estadoNuevo: c.estado_nuevo, foto: c.foto }))
+    };
+  },
+
+  async getDefectos() {
+    const { data, error } = await sb
+      .from('defectos')
+      .select('*, comentarios(*)')
+      .order('id', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(d => this._map(d));
+  },
+
+  async getDefecto(id) {
+    const { data, error } = await sb
+      .from('defectos')
+      .select('*, comentarios(*)')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return this._map(data);
+  },
+
+  async saveDefecto(d) {
+    const row = {
+      descripcion: d.descripcion,
+      gremio: d.gremio,
+      zona: d.zona,
+      obra: d.obra || null,
+      estado: d.estado,
+      notas: d.notas || null,
+      foto: d.foto || null,
+      fecha: d.fecha || new Date().toISOString(),
+      fecha_actualizacion: new Date().toISOString()
+    };
+    if (d.id) {
+      const { error } = await sb.from('defectos').update(row).eq('id', d.id);
+      if (error) throw error;
+    } else {
+      const { data, error } = await sb.from('defectos').insert(row).select('id').single();
+      if (error) throw error;
+      return data.id;
+    }
+  },
+
+  async deleteDefecto(id) {
+    const { error } = await sb.from('defectos').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async getGremios() {
+    const { data, error } = await sb.from('gremios').select('*').order('id', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async addGremio(nombre, foto) {
+    const { error } = await sb.from('gremios').insert({ nombre, foto: foto || null });
+    if (error) throw error;
+  },
+
+  async updateGremio(id, nombre, foto) {
+    const { error } = await sb.from('gremios').update({ nombre, foto: foto !== undefined ? foto : null }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async deleteGremio(id) {
+    const { error } = await sb.from('gremios').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async addComentario(defectoId, texto, nuevoEstado, foto) {
+    const { error: e1 } = await sb.from('comentarios').insert({
+      defecto_id: defectoId,
+      fecha: new Date().toISOString(),
+      texto: texto || null,
+      estado_nuevo: nuevoEstado,
+      foto: foto || null
+    });
+    if (e1) throw e1;
+    const { error: e2 } = await sb.from('defectos').update({
+      estado: nuevoEstado,
+      fecha_actualizacion: new Date().toISOString()
+    }).eq('id', defectoId);
+    if (e2) throw e2;
+  }
 };

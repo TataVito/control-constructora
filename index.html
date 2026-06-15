@@ -29,15 +29,15 @@
     <!-- KPIs globales -->
     <div class="grid grid-cols-3 gap-3 mb-6">
       <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <div class="text-3xl font-bold text-red-500" id="kpiAbiertos">0</div>
+        <div class="text-3xl font-bold text-red-500" id="kpiAbiertos">—</div>
         <div class="text-xs text-gray-500 mt-1">Abiertos</div>
       </div>
       <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <div class="text-3xl font-bold text-yellow-500" id="kpiEnProceso">0</div>
+        <div class="text-3xl font-bold text-yellow-500" id="kpiEnProceso">—</div>
         <div class="text-xs text-gray-500 mt-1">En proceso</div>
       </div>
       <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <div class="text-3xl font-bold text-green-500" id="kpiCerrados">0</div>
+        <div class="text-3xl font-bold text-green-500" id="kpiCerrados">—</div>
         <div class="text-xs text-gray-500 mt-1">Cerrados</div>
       </div>
     </div>
@@ -57,7 +57,7 @@
     <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
       <h2 class="font-semibold text-gray-700 mb-3">Por gremio</h2>
       <div id="resumenGremios" class="space-y-2">
-        <p class="text-sm text-gray-400">No hay defectos registrados</p>
+        <p class="text-sm text-gray-400">Cargando...</p>
       </div>
     </div>
 
@@ -82,7 +82,7 @@
         <a href="defectos.html" class="text-sm text-rvc">Ver todos</a>
       </div>
       <div id="ultimosDefectos">
-        <p class="text-sm text-gray-400">No hay defectos registrados</p>
+        <p class="text-sm text-gray-400">Cargando...</p>
       </div>
     </div>
 
@@ -114,11 +114,12 @@
     </a>
   </nav>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
-    function render() {
-      const todos = DB.getDefectos();
+    async function render() {
+      const todos = await DB.getDefectos();
       const abiertos  = todos.filter(d => d.estado === 'abierto').length;
       const enProceso = todos.filter(d => d.estado === 'en_proceso').length;
       const cerrados  = todos.filter(d => d.estado === 'cerrado').length;
@@ -132,7 +133,6 @@
       document.getElementById('pctLabel').textContent = pct + '%';
       document.getElementById('barProgreso').style.width = pct + '%';
 
-      // Por gremio
       const porGremio = {};
       todos.forEach(d => {
         if (!porGremio[d.gremio]) porGremio[d.gremio] = { total: 0, cerrados: 0 };
@@ -157,7 +157,6 @@
         }).join('');
       }
 
-      // Últimos 3
       const ultimosEl = document.getElementById('ultimosDefectos');
       const ultimos = [...todos].reverse().slice(0, 3);
       if (ultimos.length === 0) {
@@ -174,8 +173,8 @@
       }
     }
 
-    window.addEventListener('pageshow', render);
-    window.addEventListener('focus', render);
+    window.addEventListener('pageshow', () => render());
+    window.addEventListener('focus', () => render());
     render();
   </script>
 </body>

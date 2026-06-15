@@ -25,13 +25,14 @@
     <p class="text-sm text-gray-400">Cargando...</p>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
   <script>
-    const id      = parseInt(getParam('id'));
-    const gRaw    = getParam('g') || '';
-    const nombre  = decodeURIComponent(gRaw);
-    const backUrl = gRaw ? `gremio.html?g=${gRaw}` : 'gremio.html';
+    const defectoId   = parseInt(getParam('id'));
+    const gRaw        = getParam('g') || '';
+    const nombre      = decodeURIComponent(gRaw);
+    const backUrl     = gRaw ? `gremio.html?g=${gRaw}` : 'gremio.html';
     let estadoSeleccionado;
     let fotoComentario = null;
 
@@ -43,86 +44,6 @@
       </a>
       <img src="rvc.jpg" alt="RVC" class="h-9 w-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0">
       <h1 class="text-lg font-bold">${nombre || 'Trabajo'}</h1>`;
-
-    const d = DB.getDefectos().find(x => x.id === id);
-
-    if (!d) {
-      document.getElementById('contenido').innerHTML = '<p class="text-red-400 text-sm">Trabajo no encontrado</p>';
-    } else {
-      estadoSeleccionado = d.estado;
-      const comentarios  = d.comentarios || [];
-
-      const colorEstado = { abierto: '#ef4444', en_proceso: '#f59e0b', cerrado: '#22c55e' };
-      const borderColor = { abierto: 'border-red-400', en_proceso: 'border-yellow-400', cerrado: 'border-green-400' };
-
-      document.getElementById('contenido').innerHTML = `
-        ${d.foto ? `<img src="${d.foto}" class="w-full rounded-xl object-cover max-h-64 shadow-sm">` : ''}
-
-        <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <div class="flex items-start justify-between gap-3">
-            <h2 class="text-base font-semibold text-gray-800 leading-snug">${d.descripcion}</h2>
-            ${badge(d.estado)}
-          </div>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p class="text-xs text-gray-400 mb-0.5">Zona</p>
-              <p class="font-medium text-gray-700">${d.zona}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-400 mb-0.5">Fecha</p>
-              <p class="font-medium text-gray-700">${fmtDate(d.fecha)}</p>
-            </div>
-          </div>
-          ${d.notas ? `
-          <div>
-            <p class="text-xs text-gray-400 mb-0.5">Notas del responsable</p>
-            <p class="text-sm text-gray-600">${d.notas}</p>
-          </div>` : ''}
-        </div>
-
-        ${comentarios.length > 0 ? `
-        <div class="bg-white rounded-xl shadow-sm p-4">
-          <p class="text-sm font-medium text-gray-600 mb-3">Historial</p>
-          <div class="space-y-3">
-            ${comentarios.map(c => `
-              <div class="border-l-2 pl-3 ${borderColor[c.estadoNuevo] || 'border-gray-300'}">
-                <div class="flex items-center gap-2 mb-1">
-                  ${badge(c.estadoNuevo)}
-                  <span class="text-xs text-gray-400">${fmtDate(c.fecha)}</span>
-                </div>
-                ${c.texto ? `<p class="text-sm text-gray-600">${c.texto}</p>` : ''}
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
-
-        <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-          <p class="text-sm font-medium text-gray-600">Actualizar estado</p>
-          <div class="flex gap-2">
-            <button id="btn_abierto"    onclick="setEstado('abierto')"    class="flex-1 py-2 rounded-lg text-sm font-medium border transition">Abierto</button>
-            <button id="btn_en_proceso" onclick="setEstado('en_proceso')" class="flex-1 py-2 rounded-lg text-sm font-medium border transition">En proceso</button>
-            <button id="btn_cerrado"    onclick="setEstado('cerrado')"    class="flex-1 py-2 rounded-lg text-sm font-medium border transition">Cerrado</button>
-          </div>
-          <div>
-            <label id="fotoLabel" class="block text-sm font-medium text-gray-600 mb-1">Foto (opcional)</label>
-            <label class="block w-full border-2 border-dashed border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-red-400 transition">
-              <input type="file" id="fotoComentarioInput" accept="image/*" capture="environment" class="hidden" onchange="previewFotoComentario(this)">
-              <div id="fotoComentarioPlaceholder">
-                <svg class="w-6 h-6 mx-auto text-gray-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                <p class="text-xs text-gray-400">Toca para añadir foto</p>
-              </div>
-              <img id="fotoComentarioPreview" class="hidden mx-auto max-h-40 rounded-lg object-cover">
-            </label>
-          </div>
-          <textarea id="comentario" rows="3" placeholder="Comentario (opcional)..."
-            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
-          <button onclick="guardar()" class="w-full text-white rounded-xl py-3 font-semibold text-sm shadow" style="background:#C1272D">
-            Guardar
-          </button>
-        </div>`;
-
-      // Inicializar estado visual de botones
-      setEstado(estadoSeleccionado);
-    }
 
     function setEstado(e) {
       estadoSeleccionado = e;
@@ -156,15 +77,99 @@
       reader.readAsDataURL(input.files[0]);
     }
 
-    function guardar() {
+    async function guardar() {
       if (estadoSeleccionado === 'cerrado' && !fotoComentario) {
         alert('Debes subir una foto para cerrar el defecto.');
         return;
       }
       const texto = (document.getElementById('comentario')?.value || '').trim();
-      DB.addComentario(id, texto, estadoSeleccionado, fotoComentario);
-      window.location.href = backUrl;
+      try {
+        await DB.addComentario(defectoId, texto, estadoSeleccionado, fotoComentario);
+        window.location.href = backUrl;
+      } catch(e) {
+        alert('Error al guardar: ' + e.message);
+      }
     }
+
+    async function init() {
+      try {
+        const d = await DB.getDefecto(defectoId);
+        estadoSeleccionado = d.estado;
+        const comentarios  = d.comentarios || [];
+        const borderColor  = { abierto: 'border-red-400', en_proceso: 'border-yellow-400', cerrado: 'border-green-400' };
+
+        document.getElementById('contenido').innerHTML = `
+          ${d.foto ? `<img src="${d.foto}" class="w-full rounded-xl object-cover max-h-64 shadow-sm">` : ''}
+
+          <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <h2 class="text-base font-semibold text-gray-800 leading-snug">${d.descripcion}</h2>
+              ${badge(d.estado)}
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Zona</p>
+                <p class="font-medium text-gray-700">${d.zona}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Fecha</p>
+                <p class="font-medium text-gray-700">${fmtDate(d.fecha)}</p>
+              </div>
+            </div>
+            ${d.notas ? `
+            <div>
+              <p class="text-xs text-gray-400 mb-0.5">Notas del responsable</p>
+              <p class="text-sm text-gray-600">${d.notas}</p>
+            </div>` : ''}
+          </div>
+
+          ${comentarios.length > 0 ? `
+          <div class="bg-white rounded-xl shadow-sm p-4">
+            <p class="text-sm font-medium text-gray-600 mb-3">Historial</p>
+            <div class="space-y-3">
+              ${comentarios.map(c => `
+                <div class="border-l-2 pl-3 ${borderColor[c.estadoNuevo] || 'border-gray-300'}">
+                  <div class="flex items-center gap-2 mb-1">
+                    ${badge(c.estadoNuevo)}
+                    <span class="text-xs text-gray-400">${fmtDate(c.fecha)}</span>
+                  </div>
+                  ${c.texto ? `<p class="text-sm text-gray-600">${c.texto}</p>` : ''}
+                </div>`).join('')}
+            </div>
+          </div>` : ''}
+
+          <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+            <p class="text-sm font-medium text-gray-600">Actualizar estado</p>
+            <div class="flex gap-2">
+              <button id="btn_abierto"    onclick="setEstado('abierto')"    class="flex-1 py-2 rounded-lg text-sm font-medium border transition">Abierto</button>
+              <button id="btn_en_proceso" onclick="setEstado('en_proceso')" class="flex-1 py-2 rounded-lg text-sm font-medium border transition">En proceso</button>
+              <button id="btn_cerrado"    onclick="setEstado('cerrado')"    class="flex-1 py-2 rounded-lg text-sm font-medium border transition">Cerrado</button>
+            </div>
+            <div>
+              <label id="fotoLabel" class="block text-sm font-medium text-gray-600 mb-1">Foto (opcional)</label>
+              <label class="block w-full border-2 border-dashed border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-red-400 transition">
+                <input type="file" id="fotoComentarioInput" accept="image/*" capture="environment" class="hidden" onchange="previewFotoComentario(this)">
+                <div id="fotoComentarioPlaceholder">
+                  <svg class="w-6 h-6 mx-auto text-gray-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  <p class="text-xs text-gray-400">Toca para añadir foto</p>
+                </div>
+                <img id="fotoComentarioPreview" class="hidden mx-auto max-h-40 rounded-lg object-cover">
+              </label>
+            </div>
+            <textarea id="comentario" rows="3" placeholder="Comentario (opcional)..."
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+            <button onclick="guardar()" class="w-full text-white rounded-xl py-3 font-semibold text-sm shadow" style="background:#C1272D">
+              Guardar
+            </button>
+          </div>`;
+
+        setEstado(estadoSeleccionado);
+      } catch(e) {
+        document.getElementById('contenido').innerHTML = '<p class="text-red-400 text-sm">Trabajo no encontrado</p>';
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>

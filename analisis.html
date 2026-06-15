@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis — RVC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { rvc: { DEFAULT: '#C1272D', dark: '#A01F24' } } } }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen pb-20">
+
+  <header class="bg-rvc text-white px-4 py-3 shadow">
+    <div class="flex items-center gap-3">
+      <a href="index.html" class="text-red-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <img src="rvc.jpg" alt="RVC" class="h-9 w-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0">
+      <h1 class="text-lg font-bold">Análisis</h1>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 pt-5 space-y-5">
+
+    <!-- KPIs principales -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-400 mb-1">Total defectos</p>
+        <p class="text-3xl font-bold text-gray-700" id="kpiTotal">—</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-400 mb-1">Tasa de cierre</p>
+        <p class="text-3xl font-bold text-green-500" id="kpiTasa">—</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-400 mb-1">Tiempo medio cierre</p>
+        <p class="text-3xl font-bold text-blue-500" id="kpiTiempo">—</p>
+        <p class="text-xs text-gray-400">días</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <p class="text-xs text-gray-400 mb-1">Críticos (+7 días)</p>
+        <p class="text-3xl font-bold text-red-500" id="kpiCriticos">—</p>
+      </div>
+    </div>
+
+    <!-- Distribución por estado -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <h2 class="font-semibold text-gray-700 mb-4">Distribución por estado</h2>
+      <div class="flex items-center gap-6">
+        <div class="w-36 h-36 flex-shrink-0">
+          <canvas id="chartEstado"></canvas>
+        </div>
+        <div class="flex flex-col gap-3 flex-1">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></span>
+              <span class="text-sm text-gray-600">Abiertos</span>
+            </div>
+            <span class="text-lg font-bold text-red-500" id="numAbiertos">0</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0"></span>
+              <span class="text-sm text-gray-600">En proceso</span>
+            </div>
+            <span class="text-lg font-bold text-yellow-500" id="numEnProceso">0</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-green-400 flex-shrink-0"></span>
+              <span class="text-sm text-gray-600">Cerrados</span>
+            </div>
+            <span class="text-lg font-bold text-green-500" id="numCerrados">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Por especialidad -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <h2 class="font-semibold text-gray-700 mb-4">Por especialidad</h2>
+      <div id="tablaGremio" class="space-y-4">
+        <p class="text-sm text-gray-400">Sin datos</p>
+      </div>
+    </div>
+
+    <!-- Por zona -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <h2 class="font-semibold text-gray-700 mb-3">Zonas con más incidencias</h2>
+      <div id="tablaZona" class="space-y-3">
+        <p class="text-sm text-gray-400">Sin datos</p>
+      </div>
+    </div>
+
+    <!-- Pendientes más antiguos -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <h2 class="font-semibold text-gray-700 mb-3">Pendientes más antiguos</h2>
+      <div id="listaAntiguos">
+        <p class="text-sm text-gray-400">Sin datos</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-10">
+    <a href="index.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+      Inicio
+    </a>
+    <a href="defectos.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Defectos
+    </a>
+    <a href="analisis.html" class="flex flex-col items-center text-xs" style="color:#C1272D">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Análisis
+    </a>
+    <a href="gremios-admin.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      Gremios
+    </a>
+    <a href="nuevo.html" class="flex flex-col items-center text-xs text-gray-400">
+      <div class="rounded-full p-1 -mt-4 shadow-lg" style="background:#C1272D">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      Nuevo
+    </a>
+  </nav>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const todos  = DB.getDefectos();
+    const ahora  = new Date();
+
+    // ── Conteos ──────────────────────────────────────────────────────────
+    const abiertos  = todos.filter(d => d.estado === 'abierto').length;
+    const enProceso = todos.filter(d => d.estado === 'en_proceso').length;
+    const cerrados  = todos.filter(d => d.estado === 'cerrado').length;
+    const total     = todos.length;
+
+    // ── KPIs ─────────────────────────────────────────────────────────────
+    document.getElementById('kpiTotal').textContent    = total;
+    document.getElementById('kpiTasa').textContent     = total ? Math.round((cerrados / total) * 100) + '%' : '0%';
+    document.getElementById('numAbiertos').textContent  = abiertos;
+    document.getElementById('numEnProceso').textContent = enProceso;
+    document.getElementById('numCerrados').textContent  = cerrados;
+
+    const listaCerrados = todos.filter(d => d.estado === 'cerrado' && d.fechaActualizacion && d.fecha);
+    if (listaCerrados.length > 0) {
+      const avg = listaCerrados.reduce((s, d) =>
+        s + (new Date(d.fechaActualizacion) - new Date(d.fecha)) / 86400000, 0) / listaCerrados.length;
+      document.getElementById('kpiTiempo').textContent = Math.round(avg);
+    } else {
+      document.getElementById('kpiTiempo').textContent = '—';
+    }
+
+    const criticos = todos.filter(d =>
+      d.estado !== 'cerrado' && (ahora - new Date(d.fecha)) / 86400000 > 7).length;
+    document.getElementById('kpiCriticos').textContent = criticos;
+
+    // ── Gráfico de estado ─────────────────────────────────────────────────
+    new Chart(document.getElementById('chartEstado'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Abiertos', 'En proceso', 'Cerrados'],
+        datasets: [{
+          data: [abiertos || 0.001, enProceso || 0.001, cerrados || 0.001],
+          backgroundColor: ['#fca5a5', '#fde68a', '#86efac'],
+          borderColor:     ['#ef4444', '#f59e0b', '#22c55e'],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        cutout: '68%',
+        plugins: { legend: { display: false }, tooltip: { enabled: total > 0 } },
+        animation: { duration: 600 }
+      }
+    });
+
+    // ── Por especialidad ─────────────────────────────────────────────────
+    const porGremio = {};
+    todos.forEach(d => {
+      if (!d.gremio) return;
+      if (!porGremio[d.gremio]) porGremio[d.gremio] = { total:0, abiertos:0, enProceso:0, cerrados:0 };
+      porGremio[d.gremio].total++;
+      if (d.estado === 'abierto')    porGremio[d.gremio].abiertos++;
+      if (d.estado === 'en_proceso') porGremio[d.gremio].enProceso++;
+      if (d.estado === 'cerrado')    porGremio[d.gremio].cerrados++;
+    });
+
+    const gremioEntries = Object.entries(porGremio)
+      .sort((a, b) => (b[1].abiertos + b[1].enProceso) - (a[1].abiertos + a[1].enProceso));
+
+    const gremioEl = document.getElementById('tablaGremio');
+    if (gremioEntries.length === 0) {
+      gremioEl.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
+    } else {
+      gremioEl.innerHTML = gremioEntries.map(([g, v]) => {
+        const pct = v.total ? Math.round((v.cerrados / v.total) * 100) : 0;
+        return `
+          <div>
+            <div class="flex justify-between items-baseline mb-1">
+              <span class="text-sm font-medium text-gray-700">${g}</span>
+              <span class="text-xs text-gray-400">${pct}% cerrado</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2 mb-1.5">
+              <div class="h-2 rounded-full transition-all" style="width:${pct}%;background:#22c55e"></div>
+            </div>
+            <div class="flex gap-4 text-xs">
+              <span class="text-red-500">${v.abiertos} abiertos</span>
+              <span class="text-yellow-500">${v.enProceso} en proceso</span>
+              <span class="text-green-500">${v.cerrados} cerrados</span>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Por zona ──────────────────────────────────────────────────────────
+    const porZona = {};
+    todos.forEach(d => {
+      if (!d.zona) return;
+      if (!porZona[d.zona]) porZona[d.zona] = { total: 0, pendientes: 0 };
+      porZona[d.zona].total++;
+      if (d.estado !== 'cerrado') porZona[d.zona].pendientes++;
+    });
+    const zonaEntries = Object.entries(porZona)
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 7);
+    const maxTotal = zonaEntries.length ? zonaEntries[0][1].total : 1;
+
+    const zonaEl = document.getElementById('tablaZona');
+    if (zonaEntries.length === 0) {
+      zonaEl.innerHTML = '<p class="text-sm text-gray-400">Sin datos</p>';
+    } else {
+      zonaEl.innerHTML = zonaEntries.map(([z, v]) => `
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-600 truncate mr-2">${z}</span>
+            <span class="text-xs text-gray-400 flex-shrink-0">${v.pendientes} pend. / ${v.total} total</span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-1.5">
+            <div class="h-1.5 rounded-full" style="width:${Math.round((v.total/maxTotal)*100)}%;background:#C1272D"></div>
+          </div>
+        </div>`).join('');
+    }
+
+    // ── Pendientes más antiguos ────────────────────────────────────────────
+    const pendientesOrdenados = todos
+      .filter(d => d.estado !== 'cerrado')
+      .map(d => ({ ...d, dias: Math.round((ahora - new Date(d.fecha)) / 86400000) }))
+      .sort((a, b) => b.dias - a.dias)
+      .slice(0, 5);
+
+    const antiguosEl = document.getElementById('listaAntiguos');
+    if (pendientesOrdenados.length === 0) {
+      antiguosEl.innerHTML = '<p class="text-sm text-gray-400">No hay pendientes</p>';
+    } else {
+      antiguosEl.innerHTML = pendientesOrdenados.map(d => `
+        <a href="detalle.html?id=${d.id}" class="flex items-center justify-between py-2.5 border-b last:border-0 gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-700 truncate">${d.descripcion}</p>
+            <p class="text-xs text-gray-400 mt-0.5">${d.gremio} · ${d.zona}</p>
+          </div>
+          <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
+            ${badge(d.estado)}
+            <span class="text-xs font-semibold ${d.dias > 7 ? 'text-red-500' : 'text-gray-400'}">${d.dias}d</span>
+          </div>
+        </a>`).join('');
+    }
+  </script>
+</body>
+</html>

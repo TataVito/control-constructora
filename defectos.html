@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Defectos — RVC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { rvc: { DEFAULT: '#C1272D', dark: '#A01F24', light: '#D94F54' } } } }
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen pb-20">
+
+  <header class="bg-rvc text-white px-4 py-3 shadow">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="rvc.jpg" alt="RVC" class="h-9 w-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0">
+        <h1 class="text-lg font-bold">Defectos</h1>
+      </div>
+      <button id="btnPDF" class="flex items-center gap-1.5 border border-red-300 text-white text-xs font-semibold px-3 py-2 rounded-lg" style="background:#A01F24">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- Filtros estado -->
+  <div class="bg-white border-b px-4 py-3 flex gap-2 overflow-x-auto">
+    <button data-filtro="todos"      class="filtro-btn whitespace-nowrap text-xs font-medium px-3 py-1 rounded-full border transition">Todos</button>
+    <button data-filtro="abierto"    class="filtro-btn whitespace-nowrap text-xs font-medium px-3 py-1 rounded-full border transition">Abiertos</button>
+    <button data-filtro="en_proceso" class="filtro-btn whitespace-nowrap text-xs font-medium px-3 py-1 rounded-full border transition">En proceso</button>
+    <button data-filtro="cerrado"    class="filtro-btn whitespace-nowrap text-xs font-medium px-3 py-1 rounded-full border transition">Cerrados</button>
+  </div>
+
+  <!-- Buscador -->
+  <div class="bg-white px-4 py-2 border-b">
+    <input id="buscar" type="text" placeholder="Buscar por descripción, zona o gremio..."
+      class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+  </div>
+
+  <main class="max-w-2xl mx-auto px-4 pt-4">
+    <div id="listaDefectos" class="space-y-2"></div>
+  </main>
+
+  <!-- FAB -->
+  <a href="nuevo.html" class="fixed right-4 bottom-20 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-20" style="background:#C1272D">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+  </a>
+
+  <!-- Bottom Nav -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-10">
+    <a href="index.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+      Inicio
+    </a>
+    <a href="defectos.html" class="flex flex-col items-center text-xs" style="color:#C1272D">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Defectos
+    </a>
+    <a href="analisis.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Análisis
+    </a>
+    <a href="gremios-admin.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      Gremios
+    </a>
+    <a href="nuevo.html" class="flex flex-col items-center text-xs text-gray-400">
+      <div class="rounded-full p-1 -mt-4 shadow-lg" style="background:#C1272D">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      Nuevo
+    </a>
+  </nav>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let filtroActivo = 'todos';
+
+    function setFiltro(f) {
+      filtroActivo = f;
+      document.querySelectorAll('.filtro-btn').forEach(btn => {
+        const active = btn.dataset.filtro === f;
+        btn.style.backgroundColor = active ? '#C1272D' : '#fff';
+        btn.style.color           = active ? '#fff'    : '#6b7280';
+        btn.style.borderColor     = active ? '#C1272D' : '#e5e7eb';
+      });
+      render();
+    }
+
+    function render() {
+      const q = document.getElementById('buscar').value.toLowerCase();
+      let defectos = DB.getDefectos();
+      if (filtroActivo !== 'todos') defectos = defectos.filter(d => d.estado === filtroActivo);
+      if (q) defectos = defectos.filter(d =>
+        (d.descripcion || '').toLowerCase().includes(q) ||
+        (d.zona        || '').toLowerCase().includes(q) ||
+        (d.gremio      || '').toLowerCase().includes(q)
+      );
+      defectos = [...defectos].reverse();
+
+      const el = document.getElementById('listaDefectos');
+      if (defectos.length === 0) {
+        el.innerHTML = `<div class="text-center py-12">
+          <svg class="w-12 h-12 mx-auto text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          <p class="text-gray-400 text-sm">No hay defectos</p>
+        </div>`;
+        return;
+      }
+
+      el.innerHTML = defectos.map(d => `
+        <a href="detalle.html?id=${d.id}" class="bg-white rounded-xl shadow-sm p-4 flex gap-3 items-start">
+          ${d.foto
+            ? `<img src="${d.foto}" class="w-16 h-16 rounded-lg object-cover flex-shrink-0">`
+            : `<div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+               </div>`}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm font-medium text-gray-700 leading-snug">${d.descripcion}</p>
+              ${badge(d.estado)}
+            </div>
+            <p class="text-xs text-gray-400">${d.gremio} · ${d.zona}</p>
+            <p class="text-xs text-gray-300 mt-0.5">${fmtDate(d.fecha)}</p>
+          </div>
+        </a>`).join('');
+    }
+
+    document.getElementById('buscar').addEventListener('input', render);
+
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+      btn.addEventListener('click', () => setFiltro(btn.dataset.filtro));
+    });
+
+    document.getElementById('btnPDF').addEventListener('click', function() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const RVC = [193, 39, 45];
+      const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const defectos = DB.getDefectos();
+      const ordenados = [...defectos].reverse();
+
+      // ── Portada ────────────────────────────────────────────────────
+      doc.setFillColor(...RVC);
+      doc.rect(0, 0, 210, 32, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18); doc.setFont(undefined, 'bold');
+      doc.text('rvc', 14, 14);
+      doc.setFontSize(9); doc.setFont(undefined, 'normal');
+      doc.text('Control de Obra', 32, 11);
+      doc.setFontSize(11); doc.setFont(undefined, 'bold');
+      doc.text('Informe de Defectos', 32, 17);
+      doc.setFontSize(8); doc.setFont(undefined, 'normal');
+      doc.text(`Generado: ${fecha}`, 14, 25);
+
+      // ── Resumen ────────────────────────────────────────────────────
+      const abiertos  = defectos.filter(d => d.estado === 'abierto').length;
+      const enProceso = defectos.filter(d => d.estado === 'en_proceso').length;
+      const cerrados  = defectos.filter(d => d.estado === 'cerrado').length;
+      const total = defectos.length;
+      const pct = total ? Math.round((cerrados / total) * 100) : 0;
+
+      doc.autoTable({
+        startY: 37,
+        head: [['Total', 'Abiertos', 'En proceso', 'Cerrados', '% Cierre']],
+        body: [[total, abiertos, enProceso, cerrados, pct + '%']],
+        styles: { fontSize: 10, halign: 'center', fontStyle: 'bold' },
+        headStyles: { fillColor: RVC, textColor: [255,255,255] },
+        bodyStyles: { fillColor: [253,245,245] },
+        margin: { left: 14, right: 14 }
+      });
+
+      // ── Tabla listado ──────────────────────────────────────────────
+      const startY = doc.lastAutoTable.finalY + 8;
+      doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.setTextColor(30,30,30);
+      doc.text('Listado de defectos', 14, startY);
+
+      doc.autoTable({
+        startY: startY + 3,
+        head: [['#', 'Descripción', 'Gremio', 'Zona', 'Estado', 'Fecha']],
+        body: ordenados.map((d, i) => [
+          i + 1,
+          (d.descripcion || '').substring(0, 60) + (d.descripcion?.length > 60 ? '…' : ''),
+          d.gremio, d.zona,
+          ESTADOS[d.estado]?.label || d.estado,
+          fmtDate(d.fecha)
+        ]),
+        styles: { fontSize: 7.5, overflow: 'linebreak' },
+        headStyles: { fillColor: RVC, textColor: [255,255,255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [253,245,245] },
+        columnStyles: {
+          0: { cellWidth: 7,  halign: 'center' },
+          1: { cellWidth: 85 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 20, halign: 'center' },
+          5: { cellWidth: 20, halign: 'center' }
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 4) {
+            const v = data.cell.raw;
+            if (v === 'Abierto')         data.cell.styles.fillColor = [254,226,226];
+            else if (v === 'En proceso') data.cell.styles.fillColor = [254,243,199];
+            else if (v === 'Cerrado')    data.cell.styles.fillColor = [220,252,231];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      // ── Registro fotográfico ───────────────────────────────────────
+      const conFoto = ordenados.filter(d => d.foto || (d.comentarios || []).some(c => c.foto));
+
+      if (conFoto.length > 0) {
+        doc.addPage();
+        doc.setFillColor(...RVC);
+        doc.rect(0, 0, 210, 14, 'F');
+        doc.setFont(undefined, 'bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+        doc.text('Registro fotográfico', 14, 9.5);
+
+        let y = 22;
+        const BOTTOM = 282;
+        const estadoCol = { abierto: [239,68,68], en_proceso: [245,158,11], cerrado: [34,197,94] };
+
+        function checkPage(needed) {
+          if (y + needed > BOTTOM) { doc.addPage(); y = 14; }
+        }
+
+        function addImgSafe(src, x, iy, w, h) {
+          if (!src) return false;
+          try {
+            const fmt = /^data:image\/png/i.test(src) ? 'PNG' : 'JPEG';
+            doc.addImage(src, fmt, x, iy, w, h);
+            return true;
+          } catch(e) { return false; }
+        }
+
+        for (let idx = 0; idx < conFoto.length; idx++) {
+          const d = conFoto[idx];
+          const cierres = (d.comentarios || []).filter(c => c.foto);
+
+          checkPage(22);
+
+          // Cabecera del defecto
+          doc.setFillColor(243, 244, 246);
+          doc.rect(14, y, 182, 12, 'F');
+          doc.setFont(undefined, 'bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+          doc.text(`#${idx + 1} · ${(d.descripcion || '').substring(0, 65)}`, 16, y + 4.5);
+          doc.setFont(undefined, 'normal'); doc.setFontSize(7); doc.setTextColor(100,100,100);
+          doc.text(`${d.gremio} · ${d.zona} · ${fmtDate(d.fecha)}`, 16, y + 9.5);
+
+          // Badge de estado
+          const ec = estadoCol[d.estado] || [150,150,150];
+          const eLabel = ESTADOS[d.estado]?.label || d.estado;
+          const pw = eLabel.length * 1.8 + 5;
+          doc.setFillColor(...ec);
+          doc.roundedRect(196 - pw, y + 3, pw, 6, 1.5, 1.5, 'F');
+          doc.setFont(undefined, 'bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+          doc.text(eLabel, 196 - pw / 2, y + 7, { align: 'center' });
+
+          y += 14;
+
+          // Foto del defecto
+          if (d.foto) {
+            checkPage(58);
+            const ok = addImgSafe(d.foto, 14, y, 82, 52);
+            if (ok) {
+              const tx = 100;
+              doc.setFont(undefined, 'bold'); doc.setFontSize(7.5); doc.setTextColor(50,50,50);
+              doc.text('Foto del defecto', tx, y + 6);
+              if (d.notas) {
+                doc.setFont(undefined, 'normal');
+                const ls = doc.splitTextToSize(d.notas, 90);
+                doc.text(ls, tx, y + 13);
+              }
+              y += 56;
+            }
+          }
+
+          // Fotos de cierre (comentarios del especialista)
+          for (const c of cierres) {
+            checkPage(62);
+            doc.setFillColor(240, 253, 244);
+            doc.rect(14, y, 182, 7, 'F');
+            doc.setFont(undefined, 'bold'); doc.setFontSize(7); doc.setTextColor(22,163,74);
+            doc.text('Foto de cierre', 16, y + 4.5);
+            doc.setFont(undefined, 'normal'); doc.setTextColor(100,100,100);
+            const cLabel = `${ESTADOS[c.estadoNuevo]?.label || ''} · ${fmtDate(c.fecha)}${c.texto ? ' · ' + c.texto.substring(0, 55) : ''}`;
+            doc.text(cLabel, 50, y + 4.5);
+            y += 9;
+            const ok = addImgSafe(c.foto, 14, y, 82, 52);
+            if (ok) y += 56;
+          }
+
+          y += 8;
+        }
+      }
+
+      // ── Pie de página en todas las hojas ──────────────────────────
+      const pages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFillColor(...RVC);
+        doc.rect(0, 285, 210, 12, 'F');
+        doc.setFontSize(7); doc.setTextColor(255,255,255);
+        doc.text(`RVC · Control de Obra · Página ${i} de ${pages}`, 14, 291);
+        doc.text(fecha, 196, 291, { align: 'right' });
+      }
+
+      doc.save(`RVC-defectos-${fecha.replace(/\//g, '-')}.pdf`);
+    });
+
+    setFiltro('todos');
+  </script>
+</body>
+</html>

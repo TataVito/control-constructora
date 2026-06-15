@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obras — RVC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            rvc: { DEFAULT: '#C1272D', dark: '#A01F24', light: '#D94F54' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen pb-20">
+
+  <header class="bg-rvc text-white px-4 py-3 shadow">
+    <div class="flex items-center gap-3">
+      <a href="index.html" class="text-red-200">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="rvc.jpg" alt="RVC" class="h-9 w-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0">
+      <h1 class="text-lg font-bold">Obras</h1>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 pt-5">
+
+    <!-- Nueva obra -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-5">
+      <h2 class="font-semibold text-gray-700 mb-3">Nueva obra</h2>
+      <div class="space-y-3">
+        <input id="obraNombre" type="text" placeholder="Nombre de la obra"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+        <input id="obraDireccion" type="text" placeholder="Dirección (opcional)"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+        <button id="btnCrear"
+          class="w-full text-white rounded-lg py-2 text-sm font-semibold transition"
+          style="background:#C1272D">
+          Crear obra
+        </button>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <h2 class="font-semibold text-gray-600 text-sm mb-2 uppercase tracking-wide">Obras existentes</h2>
+    <div id="listaObras" class="space-y-2"></div>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-10">
+    <a href="index.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+      Inicio
+    </a>
+    <a href="defectos.html" class="flex flex-col items-center text-xs text-gray-400">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Defectos
+    </a>
+    <a href="nuevo.html" class="flex flex-col items-center text-xs text-gray-400">
+      <div class="rounded-full p-1 -mt-4 shadow-lg" style="background:#C1272D">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      Nuevo
+    </a>
+    <a href="obras.html" class="flex flex-col items-center text-xs" style="color:#C1272D">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a2 2 0 012-2h0a2 2 0 012 2v5"/></svg>
+      Obras
+    </a>
+  </nav>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    function render() {
+      const activa = String(localStorage.getItem('obraActiva') || '');
+      const obras = DB.getObras();
+      const el = document.getElementById('listaObras');
+
+      if (obras.length === 0) {
+        el.innerHTML = '<p class="text-sm text-gray-400 py-2">No hay obras creadas. Crea una arriba.</p>';
+        return;
+      }
+
+      el.innerHTML = obras.map(o => {
+        const esActiva = String(o.id) === activa;
+        const defectos = DB.getDefectos().filter(d => String(d.obraId) === String(o.id));
+        const cerrados  = defectos.filter(d => d.estado === 'cerrado').length;
+        return `
+          <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between"
+               style="${esActiva ? 'outline:2px solid #C1272D' : ''}">
+            <div class="flex-1 min-w-0 mr-3">
+              <p class="font-semibold text-gray-700 truncate">${o.nombre}</p>
+              <p class="text-xs text-gray-400">${o.direccion || 'Sin dirección'} · ${defectos.length} defectos (${cerrados} cerrados)</p>
+            </div>
+            <div class="flex gap-2 items-center flex-shrink-0">
+              ${esActiva
+                ? '<span class="text-xs font-bold px-2 py-1 rounded" style="color:#C1272D">✓ Activa</span>'
+                : `<button data-sel="${o.id}"
+                     class="text-xs text-white font-semibold px-3 py-1.5 rounded-lg"
+                     style="background:#C1272D">
+                     Seleccionar
+                   </button>`}
+              <button data-del="${o.id}" class="text-gray-300 hover:text-red-400 ml-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // Delegación de eventos — no depende de onclick inline
+    document.getElementById('listaObras').addEventListener('click', function(e) {
+      const selBtn = e.target.closest('[data-sel]');
+      const delBtn = e.target.closest('[data-del]');
+
+      if (selBtn) {
+        const id = selBtn.dataset.sel;
+        localStorage.setItem('obraActiva', id);
+        window.location.href = 'index.html';
+      }
+
+      if (delBtn) {
+        const id = delBtn.dataset.del;
+        if (!confirm('¿Eliminar esta obra y todos sus defectos?')) return;
+        DB.set('obras', DB.getObras().filter(o => String(o.id) !== id));
+        DB.set('defectos', DB.getDefectos().filter(d => String(d.obraId) !== id));
+        if (String(localStorage.getItem('obraActiva')) === id) localStorage.removeItem('obraActiva');
+        render();
+      }
+    });
+
+    document.getElementById('btnCrear').addEventListener('click', function() {
+      const nombre = document.getElementById('obraNombre').value.trim();
+      if (!nombre) { alert('Escribe un nombre para la obra'); return; }
+      const obra = {
+        id: DB.nextId('obra'),
+        nombre,
+        direccion: document.getElementById('obraDireccion').value.trim(),
+        fecha: new Date().toISOString()
+      };
+      DB.saveObra(obra);
+      localStorage.setItem('obraActiva', String(obra.id));
+      window.location.href = 'index.html';
+    });
+
+    render();
+  </script>
+</body>
+</html>
